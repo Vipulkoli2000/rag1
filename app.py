@@ -7,17 +7,14 @@ from langchain.vectorstores import FAISS
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.chat_models import ChatOpenAI
 from langchain.chains import RetrievalQA
-from dotenv import load_dotenv
 
-load_dotenv()
 
 # 🔐 Set your OpenRouter API key and base
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-if not OPENAI_API_KEY:
-    st.error("OPENAI_API_KEY not found in .env file. Please add it.")
+if "OPENAI_API_KEY" in st.secrets:
+    os.environ["OPENAI_API_KEY"] = st.secrets["OPENAI_API_KEY"]
+else:
+    st.error("🔐 OPENAI_API_KEY not found. Add it in the Streamlit Secrets.")
     st.stop()
-
-os.environ["OPENAI_API_KEY"] = OPENAI_API_KEY
 os.environ["OPENAI_BASE_URL"] = "https://openrouter.ai/api/v1"
 
 # 📄 Read file contents

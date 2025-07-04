@@ -8,16 +8,12 @@ from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.chat_models import ChatOpenAI
 from langchain.chains import RetrievalQA
 
-
-# 🔐 Set your OpenRouter API key and base
-if "OPENAI_API_KEY" in st.secrets:
-    os.environ["OPENAI_API_KEY"] = st.secrets["OPENAI_API_KEY"]
-else:
+# 🔐 Get OpenRouter API Key
+if "OPENAI_API_KEY" not in st.secrets:
     st.error("🔐 OPENAI_API_KEY not found. Add it in the Streamlit Secrets.")
     st.stop()
-os.environ["OPENAI_BASE_URL"] = "https://openrouter.ai/api/v1"
 
-# 📄 Read file contents
+# 📄 File Reader
 def read_file(file):
     text = ""
     if file.type == "application/pdf":
@@ -32,7 +28,7 @@ def read_file(file):
         text = file.read().decode("utf-8")
     return text
 
-# 🌐 Streamlit UI
+# 🌐 UI
 st.title("🧠 Chat with Your Documents (DeepSeek via OpenRouter)")
 
 uploaded_files = st.file_uploader(
@@ -44,36 +40,34 @@ uploaded_files = st.file_uploader(
 if uploaded_files:
     full_text = ""
     for file in uploaded_files:
-        file_text = read_file(file)
-        full_text += file_text + "\n"
+        full_text += read_file(file) + "\n"
 
     st.success("✅ Files read and processed")
 
-    # 🔪 Chunk text
+    # 🔪 Split text
     splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
     chunks = splitter.create_documents([full_text])
 
-    # 🧠 Embeddings using HuggingFace (no billing required)
+    # 🧠 Embeddings
     embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
     db = FAISS.from_documents(chunks, embeddings)
     retriever = db.as_retriever()
 
-    # 💬 Use DeepSeek model from OpenRouter
+    # 💬 LLM
     llm = ChatOpenAI(
         model_name="deepseek/deepseek-r1-0528:free",
         temperature=0,
         openai_api_base="https://openrouter.ai/api/v1",
-        openai_api_key=os.environ["OPENAI_API_KEY"],
+        openai_api_key=st.secrets["OPENAI_API_KEY"],
     )
 
-    # 🔄 Combine retriever + LLM
+    # 🔄 QA Chain
     chain = RetrievalQA.from_chain_type(
         llm=llm,
         retriever=retriever,
         return_source_documents=True,
     )
 
-    # 💬 Chat interface
     st.subheader("💬 Ask something about your files")
     query = st.text_input("Your question:")
 
